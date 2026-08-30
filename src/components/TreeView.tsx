@@ -12,7 +12,7 @@ export interface TreeNode {
 }
 
 export function buildTree(files: FileNode[], targetPath?: string): TreeNode[] {
-  const root: Record<string, TreeNode> = {};
+  const root: Record<string, TreeNode> = Object.create(null);
   const targetParts = targetPath ? targetPath.replace(/\\/g, '/').split('/').filter(Boolean) : [];
   
   files.forEach(file => {
@@ -21,12 +21,12 @@ export function buildTree(files: FileNode[], targetPath?: string): TreeNode[] {
     
     let currentLevel = root;
     parts.forEach((part, index) => {
-      if (!currentLevel[part]) {
+      if (!Object.prototype.hasOwnProperty.call(currentLevel, part)) {
         currentLevel[part] = {
           name: part,
           originalPath: '',
           type: 'directory',
-          children: {},
+          children: Object.create(null),
           autoOpen: false
         };
       }
