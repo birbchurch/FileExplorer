@@ -1,0 +1,6 @@
+{
+  "name": "NAS File Indexer",
+  "description": "Index and search encrypted NAS shared folders with download capabilities.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
