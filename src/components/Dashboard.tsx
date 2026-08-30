@@ -72,12 +72,6 @@ export function Dashboard() {
             onSubmit={(e) => { e.preventDefault(); setSearchQuery(searchInput); }}
             className="flex gap-2"
           >
-            <button 
-              type="submit" 
-              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold flex items-center gap-2 transition-colors shrink-0"
-            >
-              <Search className="w-4 h-4" /> Search
-            </button>
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -88,6 +82,12 @@ export function Dashboard() {
                 className="w-full bg-[#0F1115] border border-[#2D3139] rounded py-2 pl-10 pr-4 text-sm text-[#E0E0E0] placeholder:text-gray-500 focus:outline-none focus:border-blue-500 font-mono transition-colors"
               />
             </div>
+            <button 
+              type="submit" 
+              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold flex items-center gap-2 transition-colors shrink-0"
+            >
+              <Search className="w-4 h-4" /> Search
+            </button>
           </form>
         </div>
 
