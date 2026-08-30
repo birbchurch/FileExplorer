@@ -1,48 +1,27 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Search, FolderSync, FileText, Download, Folder } from 'lucide-react';
 import { type FileNode } from '../types';
 import { formatBytes } from '../lib/utils';
 import { format } from 'date-fns';
 import { FilePreviewModal } from './FilePreviewModal';
 import { TreeView } from './TreeView';
+import { useScanner } from '../hooks/useScanner';
 
 export function Dashboard() {
-  const [files, setFiles] = useState<FileNode[]>([]);
-  const [isScanning, setIsScanning] = useState(false);
+  const { files, isScanning, error, scan } = useScanner();
   const [searchQuery, setSearchQuery] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<FileNode | null>(null);
 
-  const handleScan = async () => {
-    setIsScanning(true);
-    setError(null);
-    try {
-      const savedPaths = localStorage.getItem('nas_indexer_paths');
-      const paths = savedPaths ? JSON.parse(savedPaths) : [];
-      
-      if (paths.length === 0) {
-        setError('No paths configured. Please add paths in Settings first.');
-        setIsScanning(false);
-        return;
-      }
-
-      const response = await fetch('/api/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paths }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to scan directories');
-      }
-
-      const data = await response.json();
-      setFiles(data.files || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
-    } finally {
-      setIsScanning(false);
+  const handleScan = () => {
+    const savedPaths = localStorage.getItem('nas_indexer_paths');
+    const paths = savedPaths ? JSON.parse(savedPaths) : [];
+    
+    if (paths.length === 0) {
+      alert('No paths configured. Please add paths in Settings first.');
+      return;
     }
+
+    scan(paths);
   };
 
   const filteredFiles = useMemo(() => {

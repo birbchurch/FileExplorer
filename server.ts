@@ -39,6 +39,61 @@ async function startServer() {
 
   app.use(express.json());
 
+  app.post('/api/scan-stream', async (req, res) => {
+    const { paths } = req.body;
+    if (!paths || !Array.isArray(paths)) {
+      return res.status(400).json({ error: 'Paths array is required' });
+    }
+
+    res.setHeader('Content-Type', 'application/x-ndjson');
+    res.setHeader('Transfer-Encoding', 'chunked');
+
+    const sendFile = (file: any) => {
+      res.write(JSON.stringify(file) + '\n');
+    };
+
+    try {
+      for (const scanPath of paths) {
+        if (!scanPath.trim()) continue;
+        await scanDirectoryStream(scanPath, sendFile);
+      }
+    } catch (error) {
+      console.error('Scan error:', error);
+      res.write(JSON.stringify({ error: 'Failed to scan directories' }) + '\n');
+    } finally {
+      res.end();
+    }
+  });
+
+  async function scanDirectoryStream(dir: string, onFile: (f: any) => void) {
+    try {
+      const files = await fs.readdir(dir, { withFileTypes: true });
+      for (const file of files) {
+        const filePath = path.join(dir, file.name);
+        const stats = await fs.stat(filePath);
+        if (file.isDirectory()) {
+          onFile({
+            name: file.name,
+            path: filePath,
+            type: 'directory',
+            mtime: stats.mtime
+          });
+          await scanDirectoryStream(filePath, onFile);
+        } else {
+          onFile({
+            name: file.name,
+            path: filePath,
+            type: 'file',
+            size: stats.size,
+            mtime: stats.mtime
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`Error scanning directory ${dir}:`, error);
+    }
+  }
+
   // API Routes
   app.post('/api/scan', async (req, res) => {
     const { paths } = req.body;

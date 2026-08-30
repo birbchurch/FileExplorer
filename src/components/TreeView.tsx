@@ -8,10 +8,12 @@ export interface TreeNode {
   type: 'file' | 'directory';
   children: Record<string, TreeNode>;
   node?: FileNode;
+  autoOpen?: boolean;
 }
 
-export function buildTree(files: FileNode[]): TreeNode[] {
+export function buildTree(files: FileNode[], targetPath?: string): TreeNode[] {
   const root: Record<string, TreeNode> = {};
+  const targetParts = targetPath ? targetPath.replace(/\\/g, '/').split('/').filter(Boolean) : [];
   
   files.forEach(file => {
     const normalized = file.path.replace(/\\/g, '/');
@@ -24,9 +26,22 @@ export function buildTree(files: FileNode[]): TreeNode[] {
           name: part,
           originalPath: '',
           type: 'directory',
-          children: {}
+          children: {},
+          autoOpen: false
         };
       }
+
+      let matchesTarget = targetParts.length > 0;
+      for (let i = 0; i <= index; i++) {
+        if (i >= targetParts.length || parts[i] !== targetParts[i]) {
+          matchesTarget = false;
+          break;
+        }
+      }
+      if (matchesTarget) {
+        currentLevel[part].autoOpen = true;
+      }
+
       if (index === parts.length - 1) {
         currentLevel[part].originalPath = file.path;
         currentLevel[part].type = file.type;
@@ -48,9 +63,14 @@ const getFileIcon = (filename: string) => {
 };
 
 const TreeNodeComponent = ({ node, onFileClick }: { node: TreeNode, onFileClick: (f: FileNode) => void }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(node.autoOpen || false);
   const isDir = node.type === 'directory' || Object.keys(node.children).length > 0;
   
+  // Make sure it expands if targetPath updates to include it
+  if (node.autoOpen && !isOpen) {
+    setIsOpen(true);
+  }
+
   return (
     <div className="pl-4">
       <div 
@@ -83,10 +103,11 @@ const TreeNodeComponent = ({ node, onFileClick }: { node: TreeNode, onFileClick:
 interface TreeViewProps {
   files: FileNode[];
   onFileClick: (f: FileNode) => void;
+  targetPath?: string;
 }
 
-export function TreeView({ files, onFileClick }: TreeViewProps) {
-  const tree = buildTree(files);
+export function TreeView({ files, onFileClick, targetPath }: TreeViewProps) {
+  const tree = buildTree(files, targetPath);
   return (
     <div className="py-2">
       {tree.map((node, i) => (
