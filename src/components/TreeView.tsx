@@ -68,8 +68,6 @@ const getParentPath = (path: string) => {
   return parts.join('\\') || '/';
 };
 
-const getFileProtocolUrl = (filePath: string) => `file:///${filePath.replace(/\\/g, '/')}`;
-
 const TreeNodeComponent = ({ node, onFileClick }: { node: TreeNode, onFileClick: (f: FileNode) => void }) => {
   const [isOpen, setIsOpen] = useState(node.autoOpen || false);
   const isDir = node.type === 'directory' || Object.keys(node.children).length > 0;
@@ -109,16 +107,16 @@ const TreeNodeComponent = ({ node, onFileClick }: { node: TreeNode, onFileClick:
                 Open
               </button>
             )}
-            <a 
-              href={getFileProtocolUrl(node.type === 'directory' ? node.node.path : getParentPath(node.node.path))}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(node.type === 'directory' ? node.node!.path : getParentPath(node.node!.path));
+              }}
               className="px-2 py-1 bg-gray-700 text-white rounded hover:bg-indigo-600 transition-colors text-[10px] uppercase font-bold tracking-wider"
-              onClick={e => e.stopPropagation()}
-              title="Open local folder"
+              title="Copy local folder path"
             >
-              Open Folder
-            </a>
+              Copy Path
+            </button>
             <a 
               href={`/folder?path=${encodeURIComponent(node.type === 'directory' ? node.node.path : getParentPath(node.node.path))}`}
               target="_blank"
@@ -127,7 +125,7 @@ const TreeNodeComponent = ({ node, onFileClick }: { node: TreeNode, onFileClick:
               onClick={e => e.stopPropagation()}
               title="Open containing folder in tree view"
             >
-              Path
+              Open In Tab
             </a>
             {node.type === 'file' && (
               <a 

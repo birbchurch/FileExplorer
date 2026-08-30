@@ -9,6 +9,7 @@ import { useScannerContext } from '../contexts/ScannerContext';
 
 export function Dashboard() {
   const { files, isScanning, error, scan } = useScannerContext();
+  const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [previewFile, setPreviewFile] = useState<FileNode | null>(null);
 
@@ -67,16 +68,27 @@ export function Dashboard() {
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Search Bar */}
         <div className="p-4 border-b border-[#2D3139] bg-[#16191E]">
-          <div className="relative">
-            <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by file name or path..."
-              className="w-full bg-[#0F1115] border border-[#2D3139] rounded py-2 pl-10 pr-4 text-sm text-[#E0E0E0] placeholder:text-gray-500 focus:outline-none focus:border-blue-500 font-mono transition-colors"
-            />
-          </div>
+          <form 
+            onSubmit={(e) => { e.preventDefault(); setSearchQuery(searchInput); }}
+            className="flex gap-2"
+          >
+            <button 
+              type="submit" 
+              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold flex items-center gap-2 transition-colors shrink-0"
+            >
+              <Search className="w-4 h-4" /> Search
+            </button>
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search by file name or path..."
+                className="w-full bg-[#0F1115] border border-[#2D3139] rounded py-2 pl-10 pr-4 text-sm text-[#E0E0E0] placeholder:text-gray-500 focus:outline-none focus:border-blue-500 font-mono transition-colors"
+              />
+            </div>
+          </form>
         </div>
 
         {/* Results Area */}
@@ -142,15 +154,15 @@ export function Dashboard() {
                             Open
                           </button>
                         )}
-                        <a 
-                          href={`file:///${(file.type === 'directory' ? file.path : getParentPath(file.path)).replace(/\\/g, '/')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(file.type === 'directory' ? file.path : getParentPath(file.path));
+                          }}
                           className="px-2 py-1 bg-gray-700 text-white rounded hover:bg-indigo-600 transition-colors text-[11px] uppercase font-bold tracking-wider"
-                          title="Open local folder"
+                          title="Copy local folder path"
                         >
-                          Open Folder
-                        </a>
+                          Copy Path
+                        </button>
                         <a 
                           href={`/folder?path=${encodeURIComponent(file.type === 'directory' ? file.path : getParentPath(file.path))}`}
                           target="_blank"
@@ -158,7 +170,7 @@ export function Dashboard() {
                           className="px-2 py-1 bg-gray-700 text-white rounded hover:bg-indigo-600 transition-colors text-[11px] uppercase font-bold tracking-wider"
                           title="Open containing folder in tree view"
                         >
-                          Path
+                          Open In Tab
                         </a>
                         {file.type === 'file' && (
                           <a
