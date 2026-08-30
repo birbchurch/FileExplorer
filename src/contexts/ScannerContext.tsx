@@ -1,15 +1,29 @@
-import { useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { type FileNode } from '../types';
+import { getAllFiles, upsertFiles } from '../lib/db';
 
-export function useScanner() {
+interface ScannerContextType {
+  files: FileNode[];
+  isScanning: boolean;
+  error: string | null;
+  scan: (paths: string[]) => Promise<void>;
+}
+
+const ScannerContext = createContext<ScannerContextType | undefined>(undefined);
+
+export function ScannerProvider({ children }: { children: ReactNode }) {
   const [files, setFiles] = useState<FileNode[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Load from IndexedDB cache on mount
+  useEffect(() => {
+    getAllFiles().then(setFiles).catch(console.error);
+  }, []);
+
   const scan = useCallback(async (paths: string[]) => {
     setIsScanning(true);
     setError(null);
-    setFiles([]);
 
     try {
       const response = await fetch('/api/scan-stream', {
@@ -27,10 +41,20 @@ export function useScanner() {
       let pendingFiles: FileNode[] = [];
       let timeoutId: any = null;
 
-      const flushFiles = () => {
+      const flushFiles = async () => {
         if (pendingFiles.length > 0) {
-          setFiles(prev => [...prev, ...pendingFiles]);
+          const currentPending = [...pendingFiles];
           pendingFiles = [];
+          
+          // CRUD: Save to IndexedDB first
+          await upsertFiles(currentPending);
+          
+          // Then update React State
+          setFiles(prev => {
+            const newMap = new Map(prev.map(f => [f.path, f]));
+            currentPending.forEach(f => newMap.set(f.path, f));
+            return Array.from(newMap.values());
+          });
         }
         timeoutId = null;
       };
@@ -40,7 +64,7 @@ export function useScanner() {
           const { done, value } = await reader.read();
           if (done) {
             if (timeoutId) clearTimeout(timeoutId);
-            flushFiles();
+            await flushFiles();
             break;
           }
 
@@ -62,7 +86,7 @@ export function useScanner() {
           }
 
           if (!timeoutId && pendingFiles.length > 0) {
-            timeoutId = setTimeout(flushFiles, 200); // 5 updates per second
+            timeoutId = setTimeout(flushFiles, 500); // Batch updates to DB/UI
           }
         }
       }
@@ -73,5 +97,17 @@ export function useScanner() {
     }
   }, []);
 
-  return { files, isScanning, error, scan };
+  return (
+    <ScannerContext.Provider value={{ files, isScanning, error, scan }}>
+      {children}
+    </ScannerContext.Provider>
+  );
+}
+
+export function useScannerContext() {
+  const context = useContext(ScannerContext);
+  if (context === undefined) {
+    throw new Error('useScannerContext must be used within a ScannerProvider');
+  }
+  return context;
 }

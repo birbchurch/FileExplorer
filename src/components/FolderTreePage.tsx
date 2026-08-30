@@ -4,13 +4,13 @@ import { TreeView } from './TreeView';
 import { FilePreviewModal } from './FilePreviewModal';
 import { type FileNode } from '../types';
 import { FolderSearch, Loader2 } from 'lucide-react';
-import { useScanner } from '../hooks/useScanner';
+import { useScannerContext } from '../contexts/ScannerContext';
 
 export function FolderTreePage() {
   const [searchParams] = useSearchParams();
   const pathParam = searchParams.get('path');
   
-  const { files, isScanning, error, scan } = useScanner();
+  const { files, isScanning, error, scan } = useScannerContext();
   const [previewFile, setPreviewFile] = useState<FileNode | null>(null);
 
   useEffect(() => {

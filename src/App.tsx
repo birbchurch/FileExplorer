@@ -8,6 +8,7 @@ import { LayoutDashboard, Settings } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { Settings as SettingsPage } from './components/Settings';
 import { FolderTreePage } from './components/FolderTreePage';
+import { ScannerProvider } from './contexts/ScannerContext';
 import { cn } from './lib/utils';
 
 function Sidebar() {
@@ -75,9 +76,11 @@ function AppLayout() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppLayout />
-    </BrowserRouter>
+    <ScannerProvider>
+      <BrowserRouter>
+        <AppLayout />
+      </BrowserRouter>
+    </ScannerProvider>
   );
 }
 

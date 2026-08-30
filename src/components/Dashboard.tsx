@@ -5,10 +5,10 @@ import { formatBytes } from '../lib/utils';
 import { format } from 'date-fns';
 import { FilePreviewModal } from './FilePreviewModal';
 import { TreeView } from './TreeView';
-import { useScanner } from '../hooks/useScanner';
+import { useScannerContext } from '../contexts/ScannerContext';
 
 export function Dashboard() {
-  const { files, isScanning, error, scan } = useScanner();
+  const { files, isScanning, error, scan } = useScannerContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [previewFile, setPreviewFile] = useState<FileNode | null>(null);
 
@@ -142,6 +142,15 @@ export function Dashboard() {
                             Open
                           </button>
                         )}
+                        <a 
+                          href={`file:///${(file.type === 'directory' ? file.path : getParentPath(file.path)).replace(/\\/g, '/')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1 bg-gray-700 text-white rounded hover:bg-indigo-600 transition-colors text-[11px] uppercase font-bold tracking-wider"
+                          title="Open local folder"
+                        >
+                          Open Folder
+                        </a>
                         <a 
                           href={`/folder?path=${encodeURIComponent(file.type === 'directory' ? file.path : getParentPath(file.path))}`}
                           target="_blank"
