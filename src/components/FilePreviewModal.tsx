@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { X, FileText, Image as ImageIcon } from 'lucide-react';
 import { type FileNode } from '../types';
+import * as mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
 
 interface FilePreviewModalProps {
   file: FileNode | null;
@@ -16,25 +18,42 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
 
   const ext = file.name.split('.').pop()?.toLowerCase();
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '');
-  const isText = ['txt', 'md', 'log', 'json', 'csv', 'ts', 'js', 'html', 'css'].includes(ext || '');
+  const isText = ['txt', 'md', 'log', 'json', 'ts', 'js', 'html', 'css'].includes(ext || '');
   const isPdf = ext === 'pdf';
-  const isOffice = ['docx', 'xlsx', 'ppt', 'pptx', 'doc', 'xls'].includes(ext || '');
-  const isSupported = isImage || isText || isPdf || isOffice;
+  const isDocx = ext === 'docx';
+  const isXlsx = ['xlsx', 'xls', 'csv'].includes(ext || '');
+  const isPptx = ['ppt', 'pptx', 'doc'].includes(ext || ''); // doc and pptx fall back to unsupported for now
+  
+  const isSupported = isImage || isText || isPdf || isDocx || isXlsx;
 
   useEffect(() => {
-    if (isText && file) {
+    if ((isText || isDocx || isXlsx) && file) {
       setLoading(true);
       setError(null);
       fetch(`/api/preview?path=${encodeURIComponent(file.path)}`)
         .then(res => {
           if (!res.ok) throw new Error('Failed to load file preview.');
-          return res.text();
+          if (isText) {
+            return res.text().then(text => setContent(text));
+          } else {
+            return res.arrayBuffer().then(async buffer => {
+              if (isDocx) {
+                const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
+                setContent(result.value);
+              } else if (isXlsx) {
+                const wb = XLSX.read(buffer, { type: 'array' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const html = XLSX.utils.sheet_to_html(ws);
+                setContent(html);
+              }
+            });
+          }
         })
-        .then(text => setContent(text))
         .catch(err => setError(err.message))
         .finally(() => setLoading(false));
     }
-  }, [file, isText]);
+  }, [file, isText, isDocx, isXlsx]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -55,6 +74,11 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
               <FileText className="w-16 h-16 mb-4 text-[#2D3139]" />
               <p className="text-sm">Preview not supported for this file type.</p>
               <p className="text-xs text-gray-600 mt-2">({ext?.toUpperCase() || 'Unknown'} file)</p>
+              {isPptx && (
+                <p className="text-xs text-blue-400 mt-2 max-w-sm text-center">
+                  Presentations and older binary formats cannot be rendered directly in the browser without external cloud viewers.
+                </p>
+              )}
               <a 
                 href={`/api/download?path=${encodeURIComponent(file.path)}`} 
                 download={file.name}
@@ -83,13 +107,25 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
             <div className="flex items-center justify-center h-full">
               <img src={`/api/preview?path=${encodeURIComponent(file.path)}`} alt={file.name} className="max-w-full max-h-full object-contain rounded" />
             </div>
-          ) : (isPdf || isOffice) ? (
+          ) : isPdf ? (
             <div className="flex-1 w-full h-full bg-white rounded overflow-hidden">
               <iframe 
                 src={`/api/preview?path=${encodeURIComponent(file.path)}`} 
                 className="w-full h-full border-none" 
                 title="Document Preview"
               />
+            </div>
+          ) : (isDocx || isXlsx) ? (
+            <div className="flex-1 w-full h-full bg-white rounded overflow-auto p-8 text-black doc-preview-container">
+              <div dangerouslySetInnerHTML={{ __html: content || '' }} />
+              <style>{`
+                .doc-preview-container table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+                .doc-preview-container td, .doc-preview-container th { border: 1px solid #ccc; padding: 4px 8px; }
+                .doc-preview-container p { margin-bottom: 1em; }
+                .doc-preview-container h1, .doc-preview-container h2, .doc-preview-container h3 { margin-top: 1em; margin-bottom: 0.5em; font-weight: bold; }
+                .doc-preview-container h1 { font-size: 2em; }
+                .doc-preview-container h2 { font-size: 1.5em; }
+              `}</style>
             </div>
           ) : (
             <pre className="font-mono text-[13px] leading-relaxed text-gray-300 whitespace-pre-wrap break-words">{content}</pre>

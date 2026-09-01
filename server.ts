@@ -7,24 +7,28 @@ async function scanDirectory(dir: string, fileList: any[] = []) {
   try {
     const files = await fs.readdir(dir, { withFileTypes: true });
     for (const file of files) {
-      const filePath = path.join(dir, file.name);
-      const stats = await fs.stat(filePath);
-      if (file.isDirectory()) {
-        fileList.push({
-          name: file.name,
-          path: filePath,
-          type: 'directory',
-          mtime: stats.mtime
-        });
-        await scanDirectory(filePath, fileList);
-      } else {
-        fileList.push({
-          name: file.name,
-          path: filePath,
-          type: 'file',
-          size: stats.size,
-          mtime: stats.mtime
-        });
+      try {
+        const filePath = path.join(dir, file.name);
+        const stats = await fs.stat(filePath);
+        if (file.isDirectory()) {
+          fileList.push({
+            name: file.name,
+            path: filePath,
+            type: 'directory',
+            mtime: stats.mtime
+          });
+          await scanDirectory(filePath, fileList);
+        } else {
+          fileList.push({
+            name: file.name,
+            path: filePath,
+            type: 'file',
+            size: stats.size,
+            mtime: stats.mtime
+          });
+        }
+      } catch (innerError) {
+        console.error(`Error processing ${file.name} in ${dir}:`, innerError);
       }
     }
   } catch (error) {
@@ -69,24 +73,28 @@ async function startServer() {
     try {
       const files = await fs.readdir(dir, { withFileTypes: true });
       for (const file of files) {
-        const filePath = path.join(dir, file.name);
-        const stats = await fs.stat(filePath);
-        if (file.isDirectory()) {
-          onFile({
-            name: file.name,
-            path: filePath,
-            type: 'directory',
-            mtime: stats.mtime
-          });
-          await scanDirectoryStream(filePath, onFile);
-        } else {
-          onFile({
-            name: file.name,
-            path: filePath,
-            type: 'file',
-            size: stats.size,
-            mtime: stats.mtime
-          });
+        try {
+          const filePath = path.join(dir, file.name);
+          const stats = await fs.stat(filePath);
+          if (file.isDirectory()) {
+            onFile({
+              name: file.name,
+              path: filePath,
+              type: 'directory',
+              mtime: stats.mtime
+            });
+            await scanDirectoryStream(filePath, onFile);
+          } else {
+            onFile({
+              name: file.name,
+              path: filePath,
+              type: 'file',
+              size: stats.size,
+              mtime: stats.mtime
+            });
+          }
+        } catch (innerError) {
+          console.error(`Error processing ${file.name} in ${dir}:`, innerError);
         }
       }
     } catch (error) {
