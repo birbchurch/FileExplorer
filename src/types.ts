@@ -10,4 +10,5 @@ export interface Profile {
   id: string;
   name: string;
   paths: string[];
+  excludeRules?: string[];
 }

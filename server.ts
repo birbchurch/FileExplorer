@@ -2,13 +2,18 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { promises as fs } from 'fs';
+import { minimatch } from 'minimatch';
 
-async function scanDirectory(dir: string, fileList: any[] = []) {
+async function scanDirectory(dir: string, fileList: any[] = [], excludeRules: string[] = []) {
   try {
     const files = await fs.readdir(dir, { withFileTypes: true });
     for (const file of files) {
       try {
         const filePath = path.join(dir, file.name);
+        
+        const isExcluded = excludeRules.some(rule => minimatch(filePath, rule, { dot: true, matchBase: true }));
+        if (isExcluded) continue;
+
         const stats = await fs.stat(filePath);
         if (file.isDirectory()) {
           fileList.push({
@@ -17,7 +22,7 @@ async function scanDirectory(dir: string, fileList: any[] = []) {
             type: 'directory',
             mtime: stats.mtime
           });
-          await scanDirectory(filePath, fileList);
+          await scanDirectory(filePath, fileList, excludeRules);
         } else {
           fileList.push({
             name: file.name,
@@ -44,7 +49,7 @@ async function startServer() {
   app.use(express.json());
 
   app.post('/api/scan-stream', async (req, res) => {
-    const { paths } = req.body;
+    const { paths, excludeRules = [] } = req.body;
     if (!paths || !Array.isArray(paths)) {
       return res.status(400).json({ error: 'Paths array is required' });
     }
@@ -59,7 +64,7 @@ async function startServer() {
     try {
       for (const scanPath of paths) {
         if (!scanPath.trim()) continue;
-        await scanDirectoryStream(scanPath, sendFile);
+        await scanDirectoryStream(scanPath, sendFile, excludeRules);
       }
     } catch (error) {
       console.error('Scan error:', error);
@@ -69,12 +74,16 @@ async function startServer() {
     }
   });
 
-  async function scanDirectoryStream(dir: string, onFile: (f: any) => void) {
+  async function scanDirectoryStream(dir: string, onFile: (f: any) => void, excludeRules: string[]) {
     try {
       const files = await fs.readdir(dir, { withFileTypes: true });
       for (const file of files) {
         try {
           const filePath = path.join(dir, file.name);
+          
+          const isExcluded = excludeRules.some(rule => minimatch(filePath, rule, { dot: true, matchBase: true }));
+          if (isExcluded) continue;
+
           const stats = await fs.stat(filePath);
           if (file.isDirectory()) {
             onFile({
@@ -83,7 +92,7 @@ async function startServer() {
               type: 'directory',
               mtime: stats.mtime
             });
-            await scanDirectoryStream(filePath, onFile);
+            await scanDirectoryStream(filePath, onFile, excludeRules);
           } else {
             onFile({
               name: file.name,
@@ -104,7 +113,7 @@ async function startServer() {
 
   // API Routes
   app.post('/api/scan', async (req, res) => {
-    const { paths } = req.body;
+    const { paths, excludeRules = [] } = req.body;
     if (!paths || !Array.isArray(paths)) {
       return res.status(400).json({ error: 'Paths array is required' });
     }
@@ -113,7 +122,7 @@ async function startServer() {
       let allFiles: any[] = [];
       for (const scanPath of paths) {
         if (!scanPath.trim()) continue;
-        const files = await scanDirectory(scanPath);
+        const files = await scanDirectory(scanPath, [], excludeRules);
         allFiles = allFiles.concat(files);
       }
       res.json({ files: allFiles });

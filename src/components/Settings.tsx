@@ -8,6 +8,7 @@ export function Settings() {
   
   const [newProfileName, setNewProfileName] = useState('');
   const [newPath, setNewPath] = useState('');
+  const [newExcludeRule, setNewExcludeRule] = useState('');
 
   useEffect(() => {
     const savedProfiles = localStorage.getItem('nas_indexer_profiles');
@@ -69,6 +70,35 @@ export function Settings() {
       const updated = profiles.map(p => {
         if (p.id === activeProfileId) {
           return { ...p, paths: p.paths.filter(path => path !== pathToRemove) };
+        }
+        return p;
+      });
+      handleSaveProfiles(updated);
+    }
+  };
+
+  const handleAddExcludeRule = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (activeProfileId && newExcludeRule.trim()) {
+      const updated = profiles.map(p => {
+        if (p.id === activeProfileId) {
+          const currentRules = p.excludeRules || [];
+          if (!currentRules.includes(newExcludeRule.trim())) {
+            return { ...p, excludeRules: [...currentRules, newExcludeRule.trim()] };
+          }
+        }
+        return p;
+      });
+      handleSaveProfiles(updated);
+      setNewExcludeRule('');
+    }
+  };
+
+  const handleRemoveExcludeRule = (ruleToRemove: string) => {
+    if (activeProfileId) {
+      const updated = profiles.map(p => {
+        if (p.id === activeProfileId && p.excludeRules) {
+          return { ...p, excludeRules: p.excludeRules.filter(rule => rule !== ruleToRemove) };
         }
         return p;
       });
@@ -164,7 +194,7 @@ export function Settings() {
                   </button>
                 </form>
               </div>
-              <div className="p-4">
+              <div className="p-4 border-b border-[#2D3139]">
                 <h3 className="text-[11px] uppercase text-gray-500 font-bold mb-3">Configured Paths ({activeProfile.paths.length})</h3>
                 {activeProfile.paths.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 text-sm">
@@ -179,6 +209,47 @@ export function Settings() {
                           onClick={() => handleRemovePath(path)}
                           className="text-gray-500 hover:text-red-400 transition-colors p-1"
                           title="Remove path"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="p-4 border-b border-[#2D3139]">
+                <form onSubmit={handleAddExcludeRule} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newExcludeRule}
+                    onChange={(e) => setNewExcludeRule(e.target.value)}
+                    placeholder="e.g. **/#recycle or node_modules"
+                    className="flex-1 bg-[#0F1115] border border-[#2D3139] rounded px-3 py-1.5 text-sm font-mono text-[#E0E0E0] placeholder:text-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newExcludeRule.trim()}
+                    className="bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded text-sm font-semibold flex items-center gap-2 transition-colors whitespace-nowrap"
+                  >
+                    <Plus className="w-4 h-4" /> Add Exclude Rule
+                  </button>
+                </form>
+              </div>
+              <div className="p-4">
+                <h3 className="text-[11px] uppercase text-gray-500 font-bold mb-3">Exclude Rules ({(activeProfile.excludeRules || []).length})</h3>
+                {(!activeProfile.excludeRules || activeProfile.excludeRules.length === 0) ? (
+                  <div className="text-center py-8 text-gray-500 text-sm">
+                    No exclude rules configured yet.
+                  </div>
+                ) : (
+                  <ul className="space-y-2">
+                    {activeProfile.excludeRules.map((rule) => (
+                      <li key={rule} className="group relative bg-[#0F1115] border border-[#2D3139] rounded p-2 flex justify-between items-center">
+                        <div className="text-xs font-mono text-blue-400 truncate pr-4">{rule}</div>
+                        <button
+                          onClick={() => handleRemoveExcludeRule(rule)}
+                          className="text-gray-500 hover:text-red-400 transition-colors p-1"
+                          title="Remove rule"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

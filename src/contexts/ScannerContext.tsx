@@ -6,7 +6,7 @@ interface ScannerContextType {
   files: FileNode[];
   isScanning: boolean;
   error: string | null;
-  scan: (paths: string[]) => Promise<void>;
+  scan: (paths: string[], excludeRules?: string[]) => Promise<void>;
 }
 
 const ScannerContext = createContext<ScannerContextType | undefined>(undefined);
@@ -21,7 +21,7 @@ export function ScannerProvider({ children }: { children: ReactNode }) {
     getAllFiles().then(setFiles).catch(console.error);
   }, []);
 
-  const scan = useCallback(async (paths: string[]) => {
+  const scan = useCallback(async (paths: string[], excludeRules: string[] = []) => {
     setIsScanning(true);
     setError(null);
 
@@ -29,7 +29,7 @@ export function ScannerProvider({ children }: { children: ReactNode }) {
       const response = await fetch('/api/scan-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paths }),
+        body: JSON.stringify({ paths, excludeRules }),
       });
 
       if (!response.ok) throw new Error('Failed to start scanning');

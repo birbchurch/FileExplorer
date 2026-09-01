@@ -36,7 +36,7 @@ export function Dashboard() {
       alert('No paths configured in the selected profile. Please configure paths in Settings first.');
       return;
     }
-    scan(activeProfile.paths);
+    scan(activeProfile.paths, activeProfile.excludeRules || []);
   };
 
   const filteredFiles = useMemo(() => {
