@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, FolderSync, FileText, Download, Folder } from 'lucide-react';
-import { type FileNode } from '../types';
+import { type FileNode, type Profile } from '../types';
 import { formatBytes } from '../lib/utils';
 import { format } from 'date-fns';
 import { FilePreviewModal } from './FilePreviewModal';
@@ -12,27 +12,48 @@ export function Dashboard() {
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [previewFile, setPreviewFile] = useState<FileNode | null>(null);
+  
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [activeProfileId, setActiveProfileId] = useState<string>('');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('nas_indexer_profiles');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setProfiles(parsed);
+        if (parsed.length > 0) {
+          setActiveProfileId(parsed[0].id);
+        }
+      } catch (e) {}
+    }
+  }, []);
+
+  const activeProfile = useMemo(() => profiles.find(p => p.id === activeProfileId), [profiles, activeProfileId]);
 
   const handleScan = () => {
-    const savedPaths = localStorage.getItem('nas_indexer_paths');
-    const paths = savedPaths ? JSON.parse(savedPaths) : [];
-    
-    if (paths.length === 0) {
-      alert('No paths configured. Please add paths in Settings first.');
+    if (!activeProfile || activeProfile.paths.length === 0) {
+      alert('No paths configured in the selected profile. Please configure paths in Settings first.');
       return;
     }
-
-    scan(paths);
+    scan(activeProfile.paths);
   };
 
   const filteredFiles = useMemo(() => {
-    if (!searchQuery) return files;
+    let result = files;
+    
+    if (activeProfile) {
+      result = result.filter(f => activeProfile.paths.some(p => f.path.startsWith(p)));
+    }
+    
+    if (!searchQuery) return result;
+    
     const lowerQuery = searchQuery.toLowerCase();
-    return files.filter(f => 
+    return result.filter(f => 
       f.name.toLowerCase().includes(lowerQuery) || 
       f.path.toLowerCase().includes(lowerQuery)
     );
-  }, [files, searchQuery]);
+  }, [files, searchQuery, activeProfile]);
 
   const getParentPath = (path: string) => {
     const parts = path.split(/[/\\]/);
@@ -49,14 +70,26 @@ export function Dashboard() {
           <p className="text-[11px] uppercase text-gray-500 font-bold tracking-widest hidden md:block">Manage indexed files</p>
         </div>
         
-        <button
-          onClick={handleScan}
-          disabled={isScanning}
-          className="bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded text-sm font-semibold flex items-center justify-center gap-2 transition-colors whitespace-nowrap"
-        >
-          <FolderSync className={`w-4 h-4 ${isScanning ? 'animate-spin' : ''}`} />
-          {isScanning ? 'Indexing...' : 'New Scan'}
-        </button>
+        <div className="flex items-center gap-3">
+          <select
+            value={activeProfileId}
+            onChange={(e) => setActiveProfileId(e.target.value)}
+            className="bg-[#0F1115] border border-[#2D3139] text-white text-sm rounded py-1.5 px-3 focus:outline-none focus:border-blue-500"
+          >
+            {profiles.length === 0 && <option value="">No Profiles</option>}
+            {profiles.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={handleScan}
+            disabled={isScanning || !activeProfile}
+            className="bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded text-sm font-semibold flex items-center justify-center gap-2 transition-colors whitespace-nowrap"
+          >
+            <FolderSync className={`w-4 h-4 ${isScanning ? 'animate-spin' : ''}`} />
+            {isScanning ? 'Indexing...' : 'New Scan'}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -154,14 +187,25 @@ export function Dashboard() {
                             Open
                           </button>
                         )}
+                        {file.type === 'file' && (
+                          <button 
+                            onClick={() => {
+                              navigator.clipboard.writeText(file.path);
+                            }}
+                            className="px-2 py-1 bg-gray-700 text-white rounded hover:bg-indigo-600 transition-colors text-[11px] uppercase font-bold tracking-wider"
+                            title="Copy file full path"
+                          >
+                            Copy File Path
+                          </button>
+                        )}
                         <button 
                           onClick={() => {
                             navigator.clipboard.writeText(file.type === 'directory' ? file.path : getParentPath(file.path));
                           }}
                           className="px-2 py-1 bg-gray-700 text-white rounded hover:bg-indigo-600 transition-colors text-[11px] uppercase font-bold tracking-wider"
-                          title="Copy local folder path"
+                          title="Copy local directory path"
                         >
-                          Copy Path
+                          Copy Dir Path
                         </button>
                         <a 
                           href={`/folder?path=${encodeURIComponent(file.type === 'directory' ? file.path : getParentPath(file.path))}`}

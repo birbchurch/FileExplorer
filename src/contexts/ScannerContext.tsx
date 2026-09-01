@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { type FileNode } from '../types';
-import { getAllFiles, upsertFiles } from '../lib/db';
+import { getAllFiles, upsertFiles, cleanupOldFiles } from '../lib/db';
 
 interface ScannerContextType {
   files: FileNode[];
@@ -39,12 +39,15 @@ export function ScannerProvider({ children }: { children: ReactNode }) {
       let buffer = '';
       
       let pendingFiles: FileNode[] = [];
+      const allScannedPaths: string[] = [];
       let timeoutId: any = null;
 
       const flushFiles = async () => {
         if (pendingFiles.length > 0) {
           const currentPending = [...pendingFiles];
           pendingFiles = [];
+          
+          currentPending.forEach(f => allScannedPaths.push(f.path));
           
           // CRUD: Save to IndexedDB first
           await upsertFiles(currentPending);
@@ -65,6 +68,9 @@ export function ScannerProvider({ children }: { children: ReactNode }) {
           if (done) {
             if (timeoutId) clearTimeout(timeoutId);
             await flushFiles();
+            await cleanupOldFiles(paths, allScannedPaths);
+            const finalFiles = await getAllFiles();
+            setFiles(finalFiles);
             break;
           }
 

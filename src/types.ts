@@ -5,3 +5,9 @@ export interface FileNode {
   size?: number;
   mtime: string;
 }
+
+export interface Profile {
+  id: string;
+  name: string;
+  paths: string[];
+}

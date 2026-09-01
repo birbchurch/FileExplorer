@@ -36,3 +36,24 @@ export const upsertFiles = async (files: any[]): Promise<void> => {
     tx.onerror = () => reject(tx.error);
   });
 };
+
+export const cleanupOldFiles = async (basePaths: string[], currentScanPaths: string[]): Promise<void> => {
+  const db = await initDB();
+  const keepSet = new Set(currentScanPaths);
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.getAll();
+    request.onsuccess = () => {
+      const all = request.result;
+      all.forEach(file => {
+        const matchesBase = basePaths.some(bp => file.path.startsWith(bp));
+        if (matchesBase && !keepSet.has(file.path)) {
+          store.delete(file.path);
+        }
+      });
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+};

@@ -107,15 +107,27 @@ const TreeNodeComponent = ({ node, onFileClick }: { node: TreeNode, onFileClick:
                 Open
               </button>
             )}
+            {node.type === 'file' && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(node.node!.path);
+                }}
+                className="px-2 py-1 bg-gray-700 text-white rounded hover:bg-indigo-600 transition-colors text-[10px] uppercase font-bold tracking-wider"
+                title="Copy file full path"
+              >
+                Copy File Path
+              </button>
+            )}
             <button 
               onClick={(e) => {
                 e.stopPropagation();
                 navigator.clipboard.writeText(node.type === 'directory' ? node.node!.path : getParentPath(node.node!.path));
               }}
               className="px-2 py-1 bg-gray-700 text-white rounded hover:bg-indigo-600 transition-colors text-[10px] uppercase font-bold tracking-wider"
-              title="Copy local folder path"
+              title="Copy local directory path"
             >
-              Copy Path
+              Copy Dir Path
             </button>
             <a 
               href={`/folder?path=${encodeURIComponent(node.type === 'directory' ? node.node.path : getParentPath(node.node.path))}`}

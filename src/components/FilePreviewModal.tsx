@@ -17,7 +17,9 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
   const ext = file.name.split('.').pop()?.toLowerCase();
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '');
   const isText = ['txt', 'md', 'log', 'json', 'csv', 'ts', 'js', 'html', 'css'].includes(ext || '');
-  const isSupported = isImage || isText;
+  const isPdf = ext === 'pdf';
+  const isOffice = ['docx', 'xlsx', 'ppt', 'pptx', 'doc', 'xls'].includes(ext || '');
+  const isSupported = isImage || isText || isPdf || isOffice;
 
   useEffect(() => {
     if (isText && file) {
@@ -36,7 +38,7 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-[#16191E] border border-[#2D3139] rounded shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden">
+      <div className="bg-[#16191E] border border-[#2D3139] rounded shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-[#2D3139] bg-[#0F1115]">
           <div className="flex items-center gap-3 overflow-hidden">
             {isImage ? <ImageIcon className="w-5 h-5 text-blue-400 shrink-0" /> : <FileText className="w-5 h-5 text-blue-400 shrink-0" />}
@@ -47,7 +49,7 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
           </button>
         </div>
         
-        <div className="flex-1 overflow-auto p-4 bg-[#0F1115] relative">
+        <div className="flex-1 overflow-auto p-4 bg-[#0F1115] relative flex flex-col">
           {!isSupported ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-500">
               <FileText className="w-16 h-16 mb-4 text-[#2D3139]" />
@@ -80,6 +82,14 @@ export function FilePreviewModal({ file, onClose }: FilePreviewModalProps) {
           ) : isImage ? (
             <div className="flex items-center justify-center h-full">
               <img src={`/api/preview?path=${encodeURIComponent(file.path)}`} alt={file.name} className="max-w-full max-h-full object-contain rounded" />
+            </div>
+          ) : (isPdf || isOffice) ? (
+            <div className="flex-1 w-full h-full bg-white rounded overflow-hidden">
+              <iframe 
+                src={`/api/preview?path=${encodeURIComponent(file.path)}`} 
+                className="w-full h-full border-none" 
+                title="Document Preview"
+              />
             </div>
           ) : (
             <pre className="font-mono text-[13px] leading-relaxed text-gray-300 whitespace-pre-wrap break-words">{content}</pre>
